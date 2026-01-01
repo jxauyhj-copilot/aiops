@@ -1,0 +1,39 @@
+[project]
+name = "aiops-demo"
+version = "0.1.0"
+description = "Enterprise ChatOps & AIOps Demo System"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "crewai",
+    "crewai-tools",
+    "langgraph",
+    "langchain",
+    "langchain-community",
+    "langchain-openai",
+    "langchain-huggingface",
+    "langchain-ollama",
+    "sentence-transformers",
+    "faiss-cpu",
+    "streamlit",
+    "python-dotenv",
+    "pydantic",
+    "pandas",
+    "numpy",
+    "pypdf",
+    "python-docx",
+    "litellm[proxy]>=1.75.3",
+    "fastapi>=0.128.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["chatops", "aiops_workflow", "knowledge_base", "config"]
