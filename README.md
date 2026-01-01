@@ -83,22 +83,22 @@ This project demonstrates an enterprise-grade system combining ChatOps and AIOps
 
 ```mermaid
 graph TD
-    User[用户 (Ops / Trade / Management)] --> ChatOps[CrewAI ChatOps (自然语言问答 & 动态查询)]
+    User["用户 (Ops / Trade / Management)"] --> ChatOps["CrewAI ChatOps (自然语言问答 & 动态查询)"]
     
     subgraph ChatOps_Flow
-        ChatOps --> RAG[RAG Knowledge DB (Wiki / SOP / Jira)]
-        ChatOps --> Tools[Tool Agents / API (Trade Volume / Metrics / Logs)]
-        RAG --> Responder[CrewAI Responder Agent]
+        ChatOps --> RAG["RAG Knowledge DB (Wiki / SOP / Jira)"]
+        ChatOps --> Tools["Tool Agents / API (Trade Volume / Metrics / Logs)"]
+        RAG --> Responder["CrewAI Responder Agent"]
         Tools --> Responder
     end
     
-    Responder --> Output[User Output]
+    Responder --> Output["User Output"]
 
-    Alert[系统告警 / 事件触发] --> AIOps[LangGraph AIOps (监控 / RCA / 建议)]
+    Alert["系统告警 / 事件触发"] --> AIOps["LangGraph AIOps (监控 / RCA / 建议)"]
     
     subgraph AIOps_Flow
-        AIOps --> Human[Human-in-the-loop]
-        Human --> Action[操作执行 / Ticket / 报告]
+        AIOps --> Human["Human-in-the-loop"]
+        Human --> Action["操作执行 / Ticket / 报告"]
     end
 ```
 
