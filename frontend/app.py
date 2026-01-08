@@ -23,58 +23,295 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from chatops.crew import ChatOpsCrew
 from aiops_workflow.graph import create_aiops_graph
 from knowledge_base.ingest import add_document, get_uploaded_documents, remove_document
+from chatops.session_manager import SessionManager
+from config.settings import settings
 
 st.set_page_config(page_title="Enterprise ChatOps & AIOps", layout="wide")
 
-# Hide Streamlit's default menu and footer
-hide_streamlit_style = """
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-</style>
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# Initialize all session state variables
+if "page" not in st.session_state:
+    st.session_state.page = "ChatOps"
+if "session_manager" not in st.session_state:
+    st.session_state.session_manager = None
+if "current_session_id" not in st.session_state:
+    st.session_state.current_session_id = None
+if "open_menu" not in st.session_state:
+    st.session_state.open_menu = None
 
-# --- Sidebar Navigation ---
+# ChatGPT-style CSS
+st.markdown("""
+<style>
+/* Main container */
+.main .block-container {
+    max-width: 100% !important;
+    padding-top: 2rem;
+}
+
+/* Sidebar styling - match ChatGPT background */
+[data-testid="stSidebar"] {
+    background-color: #f9f9f9 !important;
+    padding: 0 !important;
+}
+
+/* Remove ALL padding and margins from sidebar containers */
+[data-testid="stSidebar"] > div {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+[data-testid="stSidebar"] > div > div {
+    padding: 0 0.5rem !important;
+    margin: 0 !important;
+}
+
+/* All text - dark on light background */
+[data-testid="stSidebar"] {
+    color: #1a1a1a !important;
+}
+
+/* Force left alignment for everything */
+[data-testid="stSidebar"] *,
+[data-testid="stSidebar"] div,
+[data-testid="stSidebar"] button {
+    text-align: left !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+
+/* Buttons - exact ChatGPT measurements: py-1.5 (0.375rem) px-2 (0.5rem) */
+[data-testid="stSidebar"] button {
+    width: 100%;
+    margin: 0 !important;
+    padding: 0.375rem 0.5rem !important;
+    border-radius: 0.375rem;
+    border: none;
+    background-color: transparent !important;
+    color: #1a1a1a !important;
+    transition: background-color 0.15s;
+    font-size: 0.875rem;
+    font-weight: 400;
+    display: flex !important;
+    text-align: left !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    line-height: 1.2;
+    gap: 0.375rem;
+}
+
+/* Hover - exact ChatGPT hover */
+[data-testid="stSidebar"] button:hover {
+    background-color: rgba(0,0,0,0.05) !important;
+}
+
+/* Delete X button - more subtle */
+[data-testid="stSidebar"] button[title*="Delete"] {
+    background-color: transparent !important;
+    color: #9ca3af !important;
+    padding: 0.25rem 0.4rem !important;
+    width: auto;
+    font-size: 0.875rem;
+    opacity: 0.6;
+}
+
+[data-testid="stSidebar"] button[title*="Delete"]:hover {
+    background-color: #fee2e2 !important;
+    color: #dc2626 !important;
+    opacity: 1;
+}
+
+/* Text input - match ChatGPT style */
+[data-testid="stSidebar"] input {
+    background-color: #f5f5f5 !important;
+    border: 1px solid transparent !important;
+    border-radius: 0.375rem;
+    color: #1a1a1a !important;
+    padding: 0.375rem 0.5rem !important;
+    margin: 0 !important;
+    font-size: 0.875rem;
+}
+
+[data-testid="stSidebar"] input::placeholder {
+    color: #9ca3af !important;
+}
+
+[data-testid="stSidebar"] input:focus {
+    background-color: #ffffff !important;
+    border-color: #e5e5e5 !important;
+    outline: none !important;
+}
+
+/* Divider - minimal spacing like ChatGPT */
+[data-testid="stSidebar"] hr {
+    border-color: #e5e5e5 !important;
+    margin: 0.25rem 0 !important;
+}
+
+/* Markdown text */
+[data-testid="stSidebar"] .stMarkdown,
+[data-testid="stSidebar"] .stMarkdown p {
+    text-align: left !important;
+    color: #1a1a1a !important;
+    margin: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# --- Sidebar ---
 with st.sidebar:
-    st.title("🤖 ChatOps & AIOps")
-    page = st.radio("Navigate", ["💬 ChatOps", "🚨 AIOps Dashboard", "📚 Knowledge Management"])
-    st.divider()
+    # Page Navigation at TOP (not dropdown)
+    if st.button("💬 ChatOps", key="nav_chatops", use_container_width=True):
+        st.session_state.page = "ChatOps"
+        st.rerun()
+
+    if st.button("🚨 AIOps Dashboard", key="nav_aiops", use_container_width=True):
+        st.session_state.page = "AIOps Dashboard"
+        st.rerun()
+
+    if st.button("📚 Knowledge Management", key="nav_knowledge", use_container_width=True):
+        st.session_state.page = "Knowledge Management"
+        st.rerun()
+
+    st.markdown("---")
+
+    # New Chat button (only show on ChatOps page)
+    if st.session_state.page == "ChatOps":
+        if st.button("➕ New chat", key="new_chat_btn"):
+            if st.session_state.session_manager is None:
+                st.session_state.session_manager = SessionManager(settings.SESSIONS_DIR)
+            new_session_id = st.session_state.session_manager.create_session("New Chat")
+            st.session_state.current_session_id = new_session_id
+            st.rerun()
+
+        # Search bar
+        search = st.text_input("🔍", placeholder="Search chats...", label_visibility="collapsed")
+
+        st.markdown("---")
+
+        # Load sessions
+        if st.session_state.session_manager is None:
+            st.session_state.session_manager = SessionManager(settings.SESSIONS_DIR)
+
+        session_manager = st.session_state.session_manager
+        sessions = session_manager.list_sessions()
+
+        # Filter by search
+        if search:
+            sessions = [s for s in sessions if search.lower() in s["title"].lower()]
+
+        # Initialize current session if needed
+        if st.session_state.current_session_id is None and sessions:
+            st.session_state.current_session_id = sessions[0]["id"]
+        elif st.session_state.current_session_id is None and not sessions:
+            new_id = session_manager.create_session("New Chat")
+            st.session_state.current_session_id = new_id
+            sessions = session_manager.list_sessions()
+
+        # Display chat sessions
+        for session in sessions:
+            session_id = session["id"]
+            title = session["title"]
+            is_current = (session_id == st.session_state.current_session_id)
+
+            # Session row with delete button
+            col1, col2 = st.columns([5, 1], gap="small")
+
+            with col1:
+                if is_current:
+                    st.markdown(f"**▶ {title[:25]}...**" if len(title) > 25 else f"**▶ {title}**")
+                else:
+                    if st.button(
+                        title[:25] + "..." if len(title) > 25 else title,
+                        key=f"sess_{session_id}",
+                        use_container_width=True
+                    ):
+                        st.session_state.current_session_id = session_id
+                        st.rerun()
+
+            with col2:
+                # Direct X delete button (no menu)
+                if st.button("✕", key=f"del_{session_id}", help="Delete chat"):
+                    session_manager.delete_session(session_id)
+                    remaining = session_manager.list_sessions()
+                    st.session_state.current_session_id = remaining[0]["id"] if remaining else None
+                    st.rerun()
+
+    # Get current page
+    page = st.session_state.get("page", "ChatOps")
 
 # --- ChatOps Page ---
-if page == "💬 ChatOps":
-    st.header("Chat with your System")
-    
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+if "ChatOps" in page:
+    # Get session manager (initialized in sidebar)
+    session_manager = st.session_state.session_manager
+
+    # Load current session
+    current_session_id = st.session_state.current_session_id
+    current_session = session_manager.get_session(current_session_id)
+
+    if current_session:
+        messages = current_session.get("messages", [])
+        # Show session title as header
+        st.title(f"💬 {current_session.get('title', 'New Chat')}")
+    else:
+        messages = []
+        st.title("💬 New Chat")
 
     # Display chat messages
-    for message in st.session_state.messages:
+    for message in messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
     # Chat Input
     if prompt := st.chat_input("How can I help you?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        from datetime import datetime
+
+        # Add user message
+        user_msg = {"role": "user", "content": prompt, "timestamp": datetime.now().isoformat()}
+        messages.append(user_msg)
+
         with st.chat_message("user"):
             st.markdown(prompt)
 
+        # Get response
         with st.chat_message("assistant"):
-            with st.spinner("CrewAI Agents working..."):
+            with st.spinner("🤖 CrewAI Agents working..."):
                 try:
                     # Format history
-                    history_str = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages[:-1]])
-                    
+                    history_str = "\n".join([f"{m['role']}: {m['content']}" for m in messages[:-1]])
+
                     crew = ChatOpsCrew()
                     response = crew.run(prompt, chat_history=history_str)
-                    st.markdown(response)
-                    st.session_state.messages.append({"role": "assistant", "content": response})
+
+                    # Convert CrewOutput to string for display and storage
+                    response_str = str(response)
+                    st.markdown(response_str)
+
+                    # Add assistant message
+                    asst_msg = {"role": "assistant", "content": response_str, "timestamp": datetime.now().isoformat()}
+                    messages.append(asst_msg)
+
+                    # Save session
+                    # Generate title from first message if this is a new session
+                    if current_session:
+                        title = current_session.get("title")
+                        if len(messages) == 2 and title == "New Chat":
+                            title = session_manager.generate_title(prompt)
+
+                        session_manager.update_session(
+                            current_session_id,
+                            messages,
+                            title=title
+                        )
+
+                    # Update UI to show new title
+                    st.rerun()
+
                 except Exception as e:
                     st.error(f"Error: {e}")
+                    import traceback
+                    st.error(traceback.format_exc())
 
 # --- AIOps Page ---
-elif page == "🚨 AIOps Dashboard":
+elif "AIOps Dashboard" in page:
     st.title("AIOps Alert Management")
     st.markdown("Simulate system alerts and view the automated RCA workflow.")
     
@@ -120,7 +357,7 @@ elif page == "🚨 AIOps Dashboard":
                         st.success(post_approval_state.get("final_report"))
 
 # --- Knowledge Management Page ---
-elif page == "📚 Knowledge Management":
+elif "Knowledge Management" in page:
     st.title("Knowledge Base Management")
     st.markdown("Manage the documents available to the RAG agents.")
     

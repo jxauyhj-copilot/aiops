@@ -49,3 +49,12 @@ class ChatOpsAgents:
             llm=self.llm,
             verbose=True
         )
+
+    def intent_classifier_agent(self):
+        return Agent(
+            role='Intent Classifier',
+            goal='Analyze queries to determine if they need knowledge, data, both, or general assistance',
+            backstory='You are a query routing specialist. You classify queries to route them to the right processing pipeline.',
+            llm=self.llm,
+            verbose=False  # Reduce noise for classification
+        )

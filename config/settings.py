@@ -22,8 +22,17 @@ class Settings:
     
     # Vector DB Paths
     VECTOR_DB_PATH = os.path.join(os.path.dirname(__file__), "../knowledge_base/faiss_index")
-    
+
     # Mock Data Settings
     SIMULATE_ALERTS = True
+
+    # Session Management
+    SESSIONS_DIR = os.path.join(os.path.dirname(__file__), "../sessions")
+    MAX_SESSIONS = int(os.getenv("MAX_SESSIONS", "50"))
+    SESSION_TITLE_MAX_LENGTH = int(os.getenv("SESSION_TITLE_MAX_LENGTH", "50"))
+
+    # Intent Classification
+    ROUTING_CONFIDENCE_THRESHOLD = float(os.getenv("ROUTING_CONFIDENCE_THRESHOLD", "0.8"))
+    USE_KEYWORD_ROUTING = os.getenv("USE_KEYWORD_ROUTING", "true").lower() == "true"
 
 settings = Settings()

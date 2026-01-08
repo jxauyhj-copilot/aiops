@@ -53,6 +53,7 @@ venv.bak/
 # Project Specific
 knowledge_base/faiss_index/
 knowledge_base/documents/
+sessions/
 
 # CrewAI / LangChain / Local DBs
 db/
